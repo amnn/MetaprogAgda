@@ -38,8 +38,6 @@ data Nat : Set where
   zero : Nat
   suc : Nat -> Nat
 {-# BUILTIN NATURAL Nat #-}
-{-# BUILTIN ZERO zero #-}
-{-# BUILTIN SUC suc #-}
 
 _<=_ : Nat -> Nat -> Two
 zero   <=  n      = tt
@@ -75,7 +73,7 @@ treeSort = flatten o makeTree
 -- 1.1.6 give a collection of unit tests which cover every program line
 -- from 1.1.1 to 1.1.5
 
-myTest : (treeSort (3 , 1 , 2 , <>)) == (1 , 2 , 3 , <>)
+myTest : (treeSort (3 , (1 , (2 , <>)))) == (1 , (2 , (3 , <>)))
 myTest = refl
 
 
@@ -98,7 +96,7 @@ fastTreeSort xs = {!!}
 -- 1.1.9 again, give unit tests which cover every line of code
 
 
-myfastTest : (fastTreeSort (3 , 1 , 2 , <>)) == (1 , 2 , 3 , <>)
+myfastTest : (fastTreeSort (3 , (1 , (2 , <>)))) == (1 , (2 , (3 , <>)))
 myfastTest = refl
 
 {----------------------------------------------------------------------------}

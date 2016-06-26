@@ -169,7 +169,7 @@ mutual
 
 mutual
 
-  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg -> 
+  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg ->
                        Gam != tau -> Gam - x != tau
   << x := s >> t = {!!}
 
@@ -181,7 +181,7 @@ mutual
                  Gam != tau -> Gam !=* tau -> Gam != iota
   f      $$ ss = {!!}
 
-infix 3 _$$_ 
+infix 3 _$$_
 infix 2 <<_:=_>>_
 
 --Finish the following

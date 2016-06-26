@@ -1,16 +1,8 @@
 module Basics where
 
-
-postulate
-      Level : Set
-      lzero  : Level
-      lsuc   : Level -> Level
-      lmax   : Level -> Level -> Level
-
-{-# BUILTIN LEVEL     Level #-}
-{-# BUILTIN LEVELZERO lzero  #-}
-{-# BUILTIN LEVELSUC  lsuc   #-}
-{-# BUILTIN LEVELMAX  lmax   #-}
+open import Agda.Primitive public
+  using    (Level; lzero; lsuc)
+  renaming (_⊔_ to lmax)
 
 _o_ : forall {i j k}
         {A : Set i}{B : A -> Set j}{C : (a : A) -> B a -> Set k} ->
@@ -82,4 +74,3 @@ magic ()
 
 Dec : Set -> Set
 Dec X = X + (X -> Zero)
-

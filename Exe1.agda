@@ -20,8 +20,6 @@ data Nat : Set where
   suc   : Nat ->  Nat
 
 {-# BUILTIN NATURAL Nat #-}
-{-# BUILTIN ZERO zero #-}
-{-# BUILTIN SUC suc #-}
 
 length : {X : Set} -> List X -> Nat
 length <>        = zero
@@ -75,8 +73,9 @@ record Applicative (F : Set -> Set) : Set1 where
   applicativeEndoFunctor = record { map = _<*>_ o pure }
 open Applicative {{...}} public
 
-applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
+instance applicativeVec  : forall {n} -> Applicative (\ X -> Vec X n)
 applicativeVec  = record { pure = vec; _<*>_ = vapp }
+
 endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
 endoFunctorVec  = applicativeEndoFunctor
 
@@ -99,7 +98,7 @@ open Monad {{...}} public
 monadVec : {n : Nat} -> Monad \ X -> Vec X n
 monadVec = {!!}
 
-applicativeId : Applicative id
+instance applicativeId : Applicative id
 applicativeId = {!!}
 
 applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
@@ -110,7 +109,7 @@ record Monoid (X : Set) : Set where
   field
     neut  : X
     _&_   : X -> X -> X
-  monoidApplicative : Applicative \ _ -> X
+  instance monoidApplicative : Applicative \ _ -> X
   monoidApplicative = {!!}
 open Monoid {{...}} public -- it's not obvious that we'll avoid ambiguity
 
@@ -121,11 +120,11 @@ record Traversable (F : Set -> Set) : Set1 where
   field
     traverse :  forall {G S T}{{AG : Applicative G}} ->
                 (S -> G T) -> F S -> G (F T)
-  traversableEndoFunctor : EndoFunctor F
+  instance traversableEndoFunctor : EndoFunctor F
   traversableEndoFunctor = record { map = traverse }
 open Traversable {{...}} public
 
-traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
+instance traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
 traversableVec = record { traverse = vtr } where
   vtr :  forall {n G S T}{{_ : Applicative G}} ->
          (S -> G T) -> Vec S n -> G (Vec T n)
@@ -205,13 +204,13 @@ xs ++ ys = {!!}
 nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
 nPair F G fxgx = {!!}
 
-listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
+instance listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
 listNMonoid = {!!}
 
-sumMonoid : Monoid Nat
+instance sumMonoid : Monoid Nat
 sumMonoid = record { neut = 0; _&_ = _+Nat_ }
 
-normalTraversable : (F : Normal) -> Traversable <! F !>N
+instance normalTraversable : (F : Normal) -> Traversable <! F !>N
 normalTraversable F = record
   { traverse = \ {{aG}} f -> vv \ s xs -> pure {{aG}}  (_,_ s) <*> traverse f xs }
 

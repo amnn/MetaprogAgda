@@ -103,8 +103,6 @@ data Nat : Set where
   suc   : Nat ->  Nat
 
 {-# BUILTIN NATURAL Nat #-}
-{-# BUILTIN ZERO zero #-}
-{-# BUILTIN SUC suc #-}
 \end{code}
 
 %format length = "\F{length}"
@@ -462,9 +460,9 @@ The |Applicative F| structure decomposes |F|'s |map| as the ability to make
 Given that instance arguments are collected from the context, let us seed
 the context with suitable candidates for |Vec|:
 \begin{code}
-applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
+instance applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
 applicativeVec  = record { pure = vec; _<*>_ = vapp }
-endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
+instance endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
 endoFunctorVec  = applicativeEndoFunctor
 \end{code}
 Indeed, the definition of |endoFunctorVec| already makes use of way
@@ -533,7 +531,7 @@ applicativeComp aF aG = ?
 \end{spec}
 %if False
 \begin{code}
-applicativeId : Applicative id
+instance applicativeId : Applicative id
 applicativeId = record { pure = id; _<*>_ = id }
 
 applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
@@ -570,7 +568,7 @@ record Monoid (X : Set) : Set where
   field
     neut  : X
     _&_   : X -> X -> X
-  monoidApplicative : Applicative \ _ -> X
+  instance monoidApplicative : Applicative \ _ -> X
   monoidApplicative = record { pure = \ x -> neut; _<*>_ = _&_ }
 open Monoid {{...}} public -- it's not obvious that we'll avoid ambiguity
 \end{code}
@@ -599,7 +597,7 @@ open Traversable {{...}} public
 \nudge{The explicit |aG| became needed after I introduced the
 |applicativeId| exercise, making resolution ambiguous.}
 \begin{code}
-traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
+instance traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
 traversableVec = record { traverse = vtr } where
   vtr :  forall {n G S T}{{_ : Applicative G}} ->
          (S -> G T) -> Vec S n -> G (Vec T n)

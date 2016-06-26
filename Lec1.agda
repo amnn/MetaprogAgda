@@ -23,8 +23,6 @@ data Nat : Set where
   suc   : Nat ->  Nat
 
 {-# BUILTIN NATURAL Nat #-}
-{-# BUILTIN ZERO zero #-}
-{-# BUILTIN SUC suc #-}
 
 length : {X : Set} -> List X -> Nat
 length <> = zero
@@ -82,24 +80,30 @@ record Applicative (F : Set -> Set) : Set1 where
   applicativeEndoFunctor = record { map = _<*>_ o pure }
 open Applicative {{...}} public
 
-applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
+instance applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
 applicativeVec  = record { pure = vec; _<*>_ = vapp }
-endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
+instance endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
 endoFunctorVec  = applicativeEndoFunctor
 
-applicativeFun : forall {S} -> Applicative \ X -> S -> X
+instance applicativeFun : forall {S} -> Applicative \ X -> S -> X
 applicativeFun = record
   {  pure    = \ x s -> x              -- also known as K (drop environment)
   ;  _<*>_   = \ f a s -> f s (a s)    -- also known as S (share environment)
   }
 
 
-applicativeId : Applicative id
+instance applicativeId : Applicative id
 applicativeId = record { pure = id; _<*>_ = id }
 
 applicativeComp : forall {F G} ->
   Applicative F -> Applicative G -> Applicative (F o G)
-applicativeComp aF aG = {!!}
+applicativeComp aF aG =
+  record { pure  = pf o pg
+         ; _<*>_ = \ fgf fgx -> (pf _<g>_) <f> fgf <f> fgx
+         }
+  where
+    open Applicative aF renaming (pure to pf; _<*>_ to _<f>_)
+    open Applicative aG renaming (pure to pg; _<*>_ to _<g>_)
 
 record Monoid (X : Set) : Set where
   infixr 4 _&_
@@ -107,7 +111,7 @@ record Monoid (X : Set) : Set where
     neut  : X
     _&_   : X -> X -> X
   monoidApplicative : Applicative \ _ -> X
-  monoidApplicative = {!!}
+  monoidApplicative = record { pure = \ _ -> neut ; _<*>_ = _&_ }
 open Monoid {{...}} public -- it's not obvious that we'll avoid ambiguity
 
 record Traversable (F : Set -> Set) : Set1 where
@@ -121,7 +125,7 @@ open Traversable {{...}} public
 Id : (X : Set) -> X -> X
 Id X x = x
 
-traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
+instance traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
 traversableVec = record { traverse = vtr } where
   vtr :  forall {n G S T}{{_ : Applicative G}} ->
          (S -> G T) -> Vec S n -> G (Vec T n)
@@ -133,7 +137,7 @@ xpose = traverse id
 
 crush :  forall {F X Y}{{TF : Traversable F}}{{M : Monoid Y}} ->
          (X -> Y) -> F X -> Y
-crush {{M = M}} = 
+crush {{M = M}} =
   traverse {T = One}{{AG = monoidApplicative {{M}}}}  -- |T| arbitrary
 
 
@@ -167,7 +171,7 @@ zero +Nat y = y
 suc x +Nat y = suc (x +Nat y)
 
 _+N_ : Normal -> Normal -> Normal
-(ShF / szF) +N (ShG / szG) = (ShF + ShG) / 
+(ShF / szF) +N (ShG / szG) = (ShF + ShG) /
   (\ { (tt , sf) -> szF sf
      ; (ff , sg) -> szG sg
      })
@@ -194,8 +198,8 @@ nPair F G fxgx = {!!}
 -- Normal and Traversable
 -}
 
-sumMonoid : Monoid Nat
-sumMonoid = {!!}
+instance sumMonoid : Monoid Nat
+sumMonoid = record {neut = zero; _&_ = _+Nat_}
 
 normalTraversable : (F : Normal) -> Traversable <! F !>N
 normalTraversable F = record
