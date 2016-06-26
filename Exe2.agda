@@ -71,7 +71,7 @@ Shub Gam Del = forall Xi -> Sub (Gam <>< Xi) (Del <>< Xi)
 
 _//_ : forall {Gam Del}(theta : Shub Gam Del){tau} -> Gam !- tau -> Del !- tau
 theta // var i    = theta <> i
-theta // lam t    = lam ((theta o _,_ _) // t)
+theta // lam t    = lam ((λ Xi → theta (_ , Xi)) // t)
 theta // app f s  = app (theta // f) (theta // s)
 
 wkr :  forall {Gam Del sg} -> Ren Gam Del -> Ren (Gam :: sg) (Del :: sg)
@@ -101,14 +101,53 @@ _<>>_ : forall {X} -> Cx X -> List X -> List X
 Em         <>> ys = ys
 (xz :: x)  <>> ys = xz <>> (x , ys)
 
-lem :  forall {X}(Del Gam : Cx X) Xi ->
-       Del <>> <> == Gam <>> Xi -> Gam <>< Xi == Del
-lem Del Gam Xi q  = {!!}
+sym :  forall {l}
+    -> {T : Set l}
+    -> {A B : T}
+    -> A == B
+    -> B == A
+sym refl = refl
 
-lambda :  forall {Gam sg tau} ->
-          ((forall {Del Xi}{{_ : Del <>> <> == Gam <>> (sg , Xi)}} -> Del !- sg) ->
-            Gam :: sg !- tau) ->
-          Gam !- sg ->> tau
+Fish-Chips :
+     forall {X}
+  -> (A : Cx X)
+  -> (B : List X)
+  -> (Em <>< (A <>> B) == A <>< B)
+
+Fish-Chips Em B = refl
+Fish-Chips (A :: a) B = Fish-Chips A (a , B)
+
+Cx-List-Iso-=> :
+     forall {X}
+  -> (A : Cx X)
+  -> (Em <>< (A <>> <>) == A)
+Cx-List-Iso-=> A = Fish-Chips A <>
+
+Cx-=>-List-Respects-= :
+     forall {X}
+  -> (A B : Cx X)
+  -> (A <>> <> == B <>> <>)
+  -> (A == B)
+
+Cx-=>-List-Respects-= A B q =
+      A                  =!! sym (Cx-List-Iso-=> A)
+  >> (Em <>< (A <>> <>)) =!! cong (\ xs -> Em <>< xs) q
+  >> (Em <>< (B <>> <>)) =!!      Cx-List-Iso-=> B
+  >>  B                  <QED>
+
+lem :  forall {X}
+    -> (Del Gam : Cx X)
+    -> (Xi : List X)
+    -> Del <>> <> == Gam <>> Xi
+    -> Gam <>< Xi == Del
+lem Del Gam (x , Xi) q = lem Del (Gam :: x) Xi q
+lem Del Gam <>       q = sym (Cx-=>-List-Respects-= Del Gam q)
+
+lambda :  forall {Gam sg tau}
+       -> (  (  forall {Del Xi} {{_ : Del <>> <> == Gam <>> (sg , Xi)}}
+             -> Del !- sg)
+          -> Gam :: sg !- tau)
+       -> Gam !- sg ->> tau
 lambda {Gam} f =
   lam  (f \ {Del Xi}{{q}} ->
        subst (lem Del Gam (_ , Xi) q) (\ Gam -> Gam !- _) (var (weak Xi zero)))
