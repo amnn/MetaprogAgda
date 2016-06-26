@@ -86,12 +86,13 @@ myTest = refl
 -- is never given a name in your program
 
 fastFlatten : {X : Set} -> Tree X -> List X -> List X
-fastFlatten t = {!!}
+fastFlatten leaf acc = acc
+fastFlatten (t <[ x ]> t₁) acc = fastFlatten t (x , fastFlatten t₁ acc)
 
 -- 1.1.8 use fastFlatten to build a fast version of tree sort
 
 fastTreeSort : List Nat -> List Nat
-fastTreeSort xs = {!!}
+fastTreeSort xs = fastFlatten (makeTree xs) <>
 
 -- 1.1.9 again, give unit tests which cover every line of code
 
@@ -107,43 +108,50 @@ myfastTest = refl
 --   [C-c C-c] and [C-c C-a]
 
 inl : {A B : Set} -> A -> A + B
-inl a = {!!}
+inl a = tt , a
 
 inr : {A B : Set} -> B -> A + B
-inr b = {!!}
+inr b = ff , b
 
 orCommute : {A B : Set} -> A + B -> B + A
-orCommute x = {!!}
+orCommute (tt , x) = ff , x
+orCommute (ff , x) = tt , x
 
 orAbsorbL : {A : Set} -> Zero + A -> A
-orAbsorbL x = {!!}
+orAbsorbL (tt , ())
+orAbsorbL (ff , x) = x
 
 orAbsorbR : {A : Set} -> A + Zero -> A
-orAbsorbR x = {!!}
+orAbsorbR (tt , x) = x
+orAbsorbR (ff , ())
 
 orAssocR : {A B C : Set} -> (A + B) + C -> A + (B + C)
-orAssocR x = {!!}
+orAssocR (tt , (tt , x)) = tt , x
+orAssocR (tt , (ff , x)) = ff , (tt , x)
+orAssocR (ff , x) = ff , (ff , x)
 
 orAssocL : {A B C : Set} -> A + (B + C) -> (A + B) + C
-orAssocL x = {!!}
+orAssocL (tt , x) = tt , (tt , x)
+orAssocL (ff , (tt , x)) = tt , (ff , x)
+orAssocL (ff , (ff , x)) = ff , x
 
 -- 1.2.2 implement the following operations; try to use only
 --   [C-c C-c] and [C-c C-a]
 
 andCommute : {A B : Set} -> A * B -> B * A
-andCommute x = {!!}
+andCommute (a , b) = b , a
 
 andAbsorbL : {A : Set} -> A -> One * A
-andAbsorbL x = {!!}
+andAbsorbL x = <> , x
 
 andAbsorbR : {A : Set} -> A -> A * One
-andAbsorbR x = {!!}
+andAbsorbR x = x , <>
 
 andAssocR : {A B C : Set} -> (A * B) * C -> A * (B * C)
-andAssocR x = {!!}
+andAssocR ((a , b) , c) = a , (b , c)
 
 andAssocL : {A B C : Set} -> A * (B * C) -> (A * B) * C
-andAssocL x = {!!}
+andAssocL (a , (b , c)) = (a , b ) , c
 
 -- how many times is [C-c C-c] really needed?
 
@@ -151,11 +159,12 @@ andAssocL x = {!!}
 --   [C-c C-c] and [C-c C-a]
 
 distribute : {A B C : Set} -> A * (B + C) -> (A * B) + (A * C)
-distribute x = {!!}
+distribute (a , (tt , b)) = tt , (a , b)
+distribute (a , (ff , c)) = ff , (a , c)
 
 factor : {A B C : Set} -> (A * B) + (A * C) -> A * (B + C)
-factor x = {!!}
-
+factor (tt , (a , b)) = a , (tt , b)
+factor (ff , (a , c)) = a , (ff , c)
 
 -- 1.2.4 try to implement the following operations; try to use only
 --   [C-c C-c] and [C-c C-a]; at least one of them will prove to be
@@ -166,16 +175,20 @@ Not : Set -> Set
 Not X = X -> Zero
 
 deMorgan1 : {A B : Set} -> (Not A + Not B) -> (A * B) -> Zero
-deMorgan1 x = {!!}
+deMorgan1 (tt , snd) (fst₁ , snd₁) = snd fst₁
+deMorgan1 (ff , snd) (fst₁ , snd₁) = snd snd₁
 
+{-
 deMorgan2 : {A B : Set} -> Not (A * B) -> (Not A + Not B)
 deMorgan2 x = {!!}
+-}
 
 deMorgan3 : {A B : Set} -> (Not A * Not B) -> (A + B) -> Zero
-deMorgan3 x y = {!!}
+deMorgan3 (fst , snd) (tt , snd₁) = fst snd₁
+deMorgan3 (fst , snd) (ff , snd₁) = snd snd₁
 
 deMorgan4 : {A B : Set} -> Not (A + B) -> (Not A * Not B)
-deMorgan4 x = {!!}
+deMorgan4 x = (\ a -> x (tt , a)) , (\ b -> x (ff , b))
 
 
 -- 1.2.5 try to implement the following operations; try to use only
@@ -184,16 +197,18 @@ deMorgan4 x = {!!}
 --   why it's impossible
 
 dnegI : {X : Set} -> X -> Not (Not X)
-dnegI x f = {!!}
+dnegI x f = f x
 
+{-
 dnegE : {X : Set} -> Not (Not X) -> X
-dnegE = {!!}
+dnegE nnx = {!!}
+-}
 
 neg321 : {X : Set} -> Not (Not (Not X)) -> Not X
-neg321 nnnx x = {!!}
+neg321 nnnx x = nnnx (λ z → z x)
 
 hamlet : {B : Set} -> B + Not B
-hamlet = {!!}
+hamlet = ff , (λ x → {!!})
 
 nnHamlet : {B : Set} -> Not (Not (B + Not B))
-nnHamlet noham = {!!}
+nnHamlet noham = noham hamlet
