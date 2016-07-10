@@ -108,6 +108,10 @@ sym :  forall {l}
     -> B == A
 sym refl = refl
 
+_++_ : forall {X} -> List X -> List X -> List X
+<>       ++ ys = ys
+(x , xs) ++ ys = x , (xs ++ ys)
+
 Fish-Chips :
      forall {X}
   -> (A : Cx X)
@@ -178,11 +182,14 @@ embed the smaller context back into the larger.
 -}
 
 _-_ : forall (Gam : Cx Ty){tau}(x : tau <: Gam) -> Cx Ty
-Gam - x = {!!}
+(Gam :: tau) - zero  = Gam
+(Gam :: tau) - suc x = (Gam - x) :: tau
 infixl 4 _-_
 
 _/=_ : forall {Gam sg}(x : sg <: Gam) -> Ren (Gam - x) Gam
-x /= y = {!!}
+zero  /= y     = suc y
+suc x /= suc y = suc (x /= y)
+suc x /= zero  = zero
 
 data Veq? {Gam sg}(x : sg <: Gam) : forall {tau} -> tau <: Gam -> Set where
   same  :                                      Veq? x x
@@ -190,17 +197,27 @@ data Veq? {Gam sg}(x : sg <: Gam) : forall {tau} -> tau <: Gam -> Set where
 
 --Show that every |y| is discriminable with respect to a given |x|.
 
-veq? : forall {Gam sg tau}(x : sg <: Gam)(y : tau <: Gam) -> Veq? x y
-veq? x y = {!!}
+veq? :  forall {Gam sg tau}
+     -> (x : sg  <: Gam)
+     -> (y : tau <: Gam)
+     -> Veq? x y
+veq? zero zero    = same
+veq? zero (suc y) = diff y
+veq? (suc x) zero = diff zero
+veq? (suc x) (suc y)         with veq? x y
+veq? (suc x) (suc .x)        | same   = same
+veq? (suc x) (suc .(x /= y)) | diff y = diff (suc y)
 
 --Show how to propagate a renaming through a normal form.
 mutual
 
   renNm : forall {Gam Del tau} -> Ren Gam Del -> Gam != tau -> Del != tau
-  renNm r t = {!!}
+  renNm r (lam t) = lam (renNm (wkr r) t)
+  renNm r (x $ x₁) = (r x) $ (renSp r x₁)
 
   renSp : forall {Gam Del tau} -> Ren Gam Del -> Gam !=* tau -> Del !=* tau
-  renSp r ss = {!!}
+  renSp r <> = <>
+  renSp r (x , ss) = (renNm r x) , (renSp r ss)
 
 -- Implement hereditary substitution for normal forms and spines,
 -- defined mutually with application of a normal form to a spine,
@@ -208,25 +225,115 @@ mutual
 
 mutual
 
-  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg ->
-                       Gam != tau -> Gam - x != tau
-  << x := s >> t = {!!}
+  <<_:=_>>_ :
+       forall {Gam sg tau}
+    -> (x : sg <: Gam)
+    -> Gam - x != sg
+    -> Gam     != tau
+    -> Gam - x != tau
 
-  <<_:=_>>*_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg ->
-                        Gam !=* tau -> Gam - x !=* tau
-  << x := s >>* ts = {!!}
+  << x := s >> lam t = lam (<< suc x := renNm (weak (_ , <>)) s >> t)
+  << x := s >> x₁ $ x₂        with veq? x x₁
+  << x := s >> .x $ x₂        |    same   = s $$ (<< x := s >>* x₂)
+  << x := s >> .(x /= y) $ x₂ |    diff y = y $  (<< x := s >>* x₂)
 
-  _$$_ : forall  {Gam tau} ->
-                 Gam != tau -> Gam !=* tau -> Gam != iota
-  f      $$ ss = {!!}
+  <<_:=_>>*_ :
+       forall {Gam sg tau}
+    -> (x : sg <: Gam)
+    -> Gam - x !=  sg
+    -> Gam     !=* tau
+    -> Gam - x !=* tau
+
+  << x := s >>*  <>       = <>
+  << x := s >>* (x₁ , ts) = (<< x := s >> x₁) , (<< x := s >>* ts)
+
+  _$$_ :
+       forall {Gam tau}
+    -> Gam !=  tau
+    -> Gam !=* tau
+    -> Gam !=  iota
+
+  f     $$ <>     = f
+  lam f $$ s , ss = (<< zero := s >> f) $$ ss
 
 infix 3 _$$_
 infix 2 <<_:=_>>_
 
 --Finish the following
+mutual
+    <+_<-_+> :
+         forall {Gam tau}
+      -> Gam !=* tau
+      -> (sg : Ty)
+      -> Gam :: sg !=* sg ->> tau
+
+    <+ sp <- sg +> = eta-lnf zero , renSp (weak (sg , <>)) sp
+
+    eta-lnf :
+         forall {Gam tau}
+      -> (tau <: Gam)
+      -> (Gam != tau)
+    eta-lnf x = eta-lnf' id Em x id
+
+    eta-lnf' :
+         forall {Gam tau}
+      -> (pfx : Ty -> Ty)
+      -> (sfx : Cx Ty)
+      -> (pfx tau <: Gam <>< sfx <>> <>)
+      -> (sp  : forall {Del the} -> Del !=* the -> Del <>< sfx <>> <> !=* pfx the)
+      -> (Gam <>< sfx <>> <> != tau)
+
+    eta-lnf' {tau = iota}             pfx sfx x sp = x $ sp <>
+    eta-lnf' {Gam} {tau = sg ->> rho} pfx sfx x sp =
+      lam (subst (sym prf) (λ Del → Del != rho)
+          (eta-lnf' {Gam} {rho}
+                    (λ ty → pfx (sg ->> ty))
+                    (sfx :: sg)
+                    (subst prf (λ Del → pfx (sg ->> rho) <: Del)
+                      (weak (sg , <>) x))
+                    (λ {Bet} rsp →
+                       renSp (moveToFront Bet sfx <> sg)
+                             (sp <+ rsp <- sg +>))))
+      where
+        lemma :
+            forall {X}
+         -> (A B : Cx X)
+         -> (C D : List X)
+         -> (A <>< (B <>> C) <>< D == A <>< (B <>> (C ++ D)))
+
+        lemma A Em <> D = refl
+        lemma A Em (c , C) D = lemma (A :: c) Em C D
+        lemma A (B :: b) C D = lemma A B (b , C) D
+
+        prf : Gam <>< sfx <>> <> :: sg == Gam <>< sfx <>> (sg , <>)
+        prf = lemma Gam sfx <> (sg , <>)
+
+        swap :
+             (A   : Cx Ty)
+          -> (a b : Ty)
+          ->  Ren (A :: a :: b) (A :: b :: a)
+
+        swap A a b zero          = suc zero
+        swap A a b (suc zero)    = zero
+        swap A a b (suc (suc v)) = suc (suc v)
+
+        shift : forall {A B} C -> Ren A B -> Ren (A <>< C) (B <>< C)
+        shift <>      r = r
+        shift (c , C) r = shift C (wkr r)
+
+        moveToFront :
+             (A B : Cx Ty)
+          -> (C : List Ty)
+          -> (b : Ty)
+          -> Ren ((A :: b) <>< (B <>> C)) (A <>< (B <>> (C ++ (b , <>))))
+
+        moveToFront A (B :: b₁)  C      b = moveToFront A B (b₁ , C) b
+        moveToFront A  Em       <>      b = id
+        moveToFront A  Em       (c , C) b =
+            (moveToFront (A :: c) Em C b) o shift C (swap A b c)
 
 normalize : forall {Gam tau} -> Gam !- tau -> Gam != tau
-normalize (var x)    = {!!}
+normalize (var x)    = eta-lnf x
 normalize (lam t)    = lam (normalize t)
 normalize (app f s)  with  normalize f  | normalize s
 normalize (app f s)  |     lam t        | s'        = << zero := s' >> t
