@@ -338,6 +338,9 @@ normalize (lam t)    = lam (normalize t)
 normalize (app f s)  with  normalize f  | normalize s
 normalize (app f s)  |     lam t        | s'        = << zero := s' >> t
 
+try0 : Em != iota ->> iota
+try0 = normalize (lambda \ x -> x)
+
 try1 : Em != ((iota ->> iota) ->> (iota ->> iota)) ->> (iota ->> iota) ->> (iota ->> iota)
 try1 = normalize (lambda \ x -> x)
 
@@ -358,10 +361,12 @@ data Stop (Gam : Cx Ty)(tau : Ty) : Set where
 -- them to a spine to get a normal form.
 
 renSt : forall {Gam Del tau} -> Ren Gam Del -> Stop Gam tau -> Stop Del tau
-renSt r u = {!!}
+renSt r (var x) = var (r x)
+renSt r (u $ x) = (renSt r u) $ (renNm r x)
 
 stopSp : forall {Gam tau} -> Stop Gam tau -> Gam !=* tau -> Gam != iota
-stopSp u ss = {!!}
+stopSp (var x) ss = x $ ss
+stopSp (u $ x) ss = stopSp u (x , ss)
 
 mutual
 
@@ -376,13 +381,17 @@ mutual
 -- Construct the identity environment, mapping each variable to itself.
 
 renVal : forall {Gam Del} tau -> Ren Gam Del -> Val Gam tau -> Val Del tau
-renVal tau r v = {!!}
+renVal  iota        r (tt , ())
+renVal (sg ->> tau) r (tt , go)  = tt , (λ r₁ → go (r₁ o r))
+renVal  tau         r (ff , stp) = ff , renSt r stp
 
 renVals : forall The {Gam Del} -> Ren Gam Del -> <! The !>C (Val Gam) -> <! The !>C (Val Del)
-renVals The r the = {!!}
+renVals Em r the = <>
+renVals (The :: tau) r (rest , last) = renVals The r rest , renVal tau r last
 
 idEnv : forall Gam -> <! Gam !>C (Val Gam)
-idEnv Gam = {!!}
+idEnv Em = <>
+idEnv (Gam :: tau) = (renVals Gam (weak (_ , <>)) (idEnv Gam)) , (ff , var zero)
 
 -- Implement application for values. \nudge{It seems $\F{quote}$ is a
 -- reserved symbol in Agda.}In order to apply a stopped function, you will
@@ -392,16 +401,41 @@ idEnv Gam = {!!}
 mutual
 
   apply : forall {Gam sg tau} -> Val Gam (sg ->> tau) -> Val Gam sg -> Val Gam tau
-  apply f s = {!!}
+  apply (tt , go)  s = go id s
+  apply (ff , stp) s = ff , (stp $ quo _ s)
 
   quo : forall {Gam} tau -> Val Gam tau -> Gam != tau
-  quo tau v = {!!}
+
+  quo iota (tt , ())
+  quo (sg ->> rho) (tt , go) =
+    lam (quo rho (go (weak (_ , <>)) (ff , var zero)))
+
+  quo tau (ff , var x) = eta-lnf x
+  quo tau (ff , (stp $ x)) = appNm (quo _ (ff , stp)) x
+    where
+      appNm :
+           forall {Gam sg tau}
+        -> Gam != sg ->> tau
+        -> Gam != sg
+        -> Gam != tau
+      appNm (lam f) x₁ = << zero := x₁ >> f
 
 -- Show that every well typed term can be given a value in any context where its
 -- free variables have values.
 
 eval : forall {Gam Del tau} -> Gam !- tau -> <! Gam !>C (Val Del) -> Val Del tau
-eval t gam = {!!}
+eval (var x) gam = fetch gam x
+  where
+    fetch :
+         forall {Gam Del tau}
+      -> <! Gam !>C (Val Del)
+      -> tau <: Gam
+      -> Val Del tau
+    fetch (ctx , lst)  zero   = lst
+    fetch (ctx , lst) (suc v) = fetch ctx v
+
+eval (lam t) gam = tt , (λ r vsg → eval t ((renVals _ r gam) , vsg))
+eval (app t t₁) gam = apply (eval t gam) (eval t₁ gam)
 
 normByEval : forall {Gam tau} -> Gam !- tau -> Gam != tau
 normByEval {Gam}{tau} t = quo tau (eval t (idEnv Gam))
