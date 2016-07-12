@@ -410,15 +410,9 @@ mutual
   quo (sg ->> rho) (tt , go) =
     lam (quo rho (go (weak (_ , <>)) (ff , var zero)))
 
-  quo tau (ff , var x) = eta-lnf x
-  quo tau (ff , (stp $ x)) = appNm (quo _ (ff , stp)) x
-    where
-      appNm :
-           forall {Gam sg tau}
-        -> Gam != sg ->> tau
-        -> Gam != sg
-        -> Gam != tau
-      appNm (lam f) x₁ = << zero := x₁ >> f
+  quo tau (ff ,  var x)                          = eta-lnf x
+  quo tau (ff , (stp $ x)) with quo _ (ff , stp)
+  quo tau (ff , (stp $ x)) |    lam f            = << zero := x >> f
 
 -- Show that every well typed term can be given a value in any context where its
 -- free variables have values.
