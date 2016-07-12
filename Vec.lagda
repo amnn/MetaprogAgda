@@ -450,7 +450,7 @@ record Applicative (F : Set -> Set) : Set1 where
   field
     pure    : forall {X} -> X -> F X
     _<*>_   : forall {S T} -> F (S -> T) -> F S -> F T
-  applicativeEndoFunctor : EndoFunctor F
+  instance applicativeEndoFunctor : EndoFunctor F
   applicativeEndoFunctor = record { map = _<*>_ o pure }
 open Applicative {{...}} public
 \end{code}
@@ -462,8 +462,6 @@ the context with suitable candidates for |Vec|:
 \begin{code}
 instance applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
 applicativeVec  = record { pure = vec; _<*>_ = vapp }
-instance endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
-endoFunctorVec  = applicativeEndoFunctor
 \end{code}
 Indeed, the definition of |endoFunctorVec| already makes use of way
 |itsEndoFunctor| searches the context and finds |applicativeVec|.
@@ -473,7 +471,7 @@ There are lots of applicative functors about the place. Here's
 another
 famous one:
 \begin{code}
-applicativeFun : forall {S} -> Applicative \ X -> S -> X
+instance applicativeFun : forall {S} -> Applicative \ X -> S -> X
 applicativeFun = record
   {  pure    = \ x s -> x              -- also known as K (drop environment)
   ;  _<*>_   = \ f a s -> f s (a s)    -- also known as S (share environment)
@@ -486,7 +484,7 @@ record Monad (F : Set -> Set) : Set1 where
   field
     return  : forall {X} -> X -> F X
     _>>=_   : forall {S T} -> F S -> (S -> F T) -> F T
-  monadApplicative : Applicative F
+  instance monadApplicative : Applicative F
   monadApplicative = record
     {  pure   = return
     ;  _<*>_  = \ ff fs -> ff >>= \ f -> fs >>= \ s -> return (f s) }
@@ -534,7 +532,7 @@ applicativeComp aF aG = ?
 instance applicativeId : Applicative id
 applicativeId = record { pure = id; _<*>_ = id }
 
-applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
+instance applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
 applicativeComp aF aG = record
   {  pure   = \ x    -> pure {{aF}} (pure x)
   ;  _<*>_  = \ f s  -> pure {{aF}} _<*>_ <*> f <*> s

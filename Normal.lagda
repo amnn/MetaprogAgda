@@ -42,7 +42,7 @@ Vectors are the normal functors with a unique shape. Lists are the normal functo
 whose shape is their size.
 \begin{code}
 VecN : Nat -> Normal
-VecN n = One / pure n
+VecN n = One / (λ _ → n)
 
 ListN : Normal
 ListN = Nat / id
@@ -174,10 +174,10 @@ listNMonoid = ?
 %format listNMonoid = "\F{listNMonoid}"
 %if False
 \begin{code}
-listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
+instance listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
 listNMonoid = record
   {  neut  = 0 , <>
-  ;  _&_   = vv \ xn xs -> vv \ yn ys -> xn +Nat yn , xs ++ ys 
+  ;  _&_   = vv \ xn xs -> vv \ yn ys -> xn +Nat yn , xs ++ ys
   }
 \end{code}
 %endif
@@ -205,7 +205,7 @@ that |Normal| functors are traversable because vectors are.
 %format sumMonoid = "\F{sumMonoid}"
 %format normalTraversable = "\F{normalTraversable}"
 \begin{code}
-sumMonoid : Monoid Nat
+instance sumMonoid : Monoid Nat
 sumMonoid = record { neut = 0; _&_ = _+Nat_ }
 
 normalTraversable : (F : Normal) -> Traversable <! F !>N
@@ -267,7 +267,7 @@ toNormal fx = BAD (shapeT fx , snd (contentsT fx))
 but it fails to typecheck because the size of the shape of |fx|
 is not obviously the length of the contents of |fx|.
 The trouble is that |Traversable F| is
-underspecified. In due course, we shall discover that it means 
+underspecified. In due course, we shall discover that it means
 just that
 |F| is naturally isomorphic to |<! normalT F !>N|.\nudge{Check this.}
 To see this, however, we shall need the capacity to reason equationally,
