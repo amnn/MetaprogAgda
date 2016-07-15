@@ -164,7 +164,7 @@ C ^* X = W (Kc X +c C)
 {- {exe}[free monad]
 Construct the components for -}
 
-freeMonad : (C : Con) -> Monad (_^*_ C)
+instance freeMonad : (C : Con) -> Monad (_^*_ C)
 freeMonad C =
   record { return = λ x → <$ (tt , x) , magic $>
          ; _>>=_  = bind
@@ -199,29 +199,56 @@ C ^*c = C ^* One <1 po
   |C ^* X| \cong |<! C ^*c !>c X|
 \] -}
 
-{- {exe}[general recursion]
-Define the monadic computation which performs one command-response
-interaction: -}
-
-call : forall {C} -> (s : Sh C) -> C ^* Po C s
-call s = <$ {!!} $>
-
 {-We can model\nudge{in too much detail}, the general recursive function
 space as the means to perform finite, on demand expansion of call trees. -}
 
 Pib : (S : Set)(T : S -> Set) -> Set
 Pib S T = (s : S) -> (S <1 T) ^* T s
 
+{- {exe}[general recursion]
+Define the monadic computation which performs one command-response
+interaction: -}
+
+call : forall {C} -> Pib (Sh C) (Po C)
+call {S <1 P} s = <$ (ff , s) , (\ p -> <$ (tt , p) , magic $>) $>
+
 {- Give the `gasoline-driven' interpreter for this function space,
 delivering a result provided the call tree does not expand more times
 than a given number. -}
 
 gas : forall {S T} -> Nat -> Pib S T -> (s : S) -> T s + One
-gas n f s = {!!}
+gas          zero   _ _ = ff , <>
+gas {S} {T} (suc n) f s = go (f s)
+  where
+    go : (S <1 T) ^* T s -> T s + One
+    go <$ (tt , res) , _ $> = tt , res
+    go <$ (ff , s') , more $> with gas n f s'
+    go <$ (ff , s') , more $> | tt , mid = go (more mid)
+    go <$ (ff , s') , more $> | ff , <> = ff , <>
 
 {- Feel free to implement reduction for the untyped
 $\lambda$-calculus, or some other model of computation, as a recursive
 function in this way. -}
+
+_=m>_ : Set -> Set -> Set
+X =m> Y = Pib X (\ _ -> Y)
+
+driver : Set -> Set -> Set -> Set
+driver Cmd Rsp Ret = (Cmd <1 \ _ -> Rsp) ^* Ret
+
+delay :
+     {{m : Monad (driver Nat Nat)}}
+  -> Nat =m> Nat
+delay  zero   = return zero
+delay (suc n) = call n >>= (return o suc)
+
+{-
+ `delay` is the monadic equivalent of:
+
+     foo : Nat -> Nat
+     foo  zero   = zero
+     foo (suc n) = suc (foo n)
+ -}
 
 ----------------------------------------------------------------------
 _-_ : (X : Set)(x : X) -> Set
@@ -234,9 +261,23 @@ der (S <1 P) = Sg S P <1 vv \ s p -> P s - p
 Exhibit a container morphism which witnesses the ability to
 fill the hole, provided equality on positions is decidable. -}
 
-plug :  forall {C} -> ((s : Sh C)(p p' : Po C s) -> Dec (p == p')) ->
-        (der C *c Ic) -c> C
-plug {C} poeq? = {!!}
+plug :
+      forall {C}
+  -> ((s : Sh C) -> (p p' : Po C s) -> Dec (p == p'))
+  -> (der C *c Ic) -c> C
+plug {C} poeq? = plugShape , plugPo
+  where
+    plugShape : Sh (der C *c Ic) -> Sh C
+    plugShape ((sh , hole) , <>) = sh
+
+    plugPo :
+         (s : Sh (der C *c Ic))
+      -> (Po C (plugShape s))
+      -> (Po (der C *c Ic) s)
+    plugPo ((sh , hole) , <>) po with poeq? sh po hole
+    plugPo ((sh , hole) , <>) po | tt , eq     = ff , <>
+    plugPo ((sh , hole) , <>) po | ff , contra = tt , po , contra
+
 
 {- {exe}[laws of calculus]
 Check that the following laws hold at the level of mutually inverse
