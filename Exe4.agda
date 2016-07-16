@@ -25,7 +25,8 @@ _-:>_ : forall {k l}{I : Set k} -> (I -> Set l) -> (I -> Set l) -> Set (lmax l k
 X -:> Y = forall i -> X i -> Y i
 
 ixMap : forall {I J}{C : I i> J}{X Y} -> (X -:> Y) -> <! C !>i X -:> <! C !>i Y
-ixMap f j xs = {!!}
+ixMap {C = ShIx <i PoIx $ riIx} f j (sh , po) =
+  sh , (λ p → f (riIx j sh p) (po p))
 
 ------------------------------------------------------------------------
 data ITree {J : Set}(C : J i> J)(j : J) : Set where
@@ -35,9 +36,58 @@ data ITree {J : Set}(C : J i> J)(j : J) : Set where
 Define the simply typed $\lambda$-terms as Petersson-Synek trees. -}
 
 STLC : (Cx Ty * Ty) i> (Cx Ty * Ty)
-STLC = {!!}
+STLC = sh <i po $ ri
+  where
+    isAbs : Ty -> Set
+    isAbs  iota        = Zero
+    isAbs (sg ->> tau) = One
+
+    sh : Cx Ty * Ty -> Set
+    sh (Gam , tau) = (tau <: Gam) + ((isAbs tau) + Ty)
+
+    po : (j : Cx Ty * Ty) -> (sh j) -> Set
+    po  r (tt ,  v)       = Zero
+    po  r (ff , (tt , _)) = One
+    po  r (ff , (ff , _)) = Two
+
+    ri : (j : Cx Ty * Ty) -> (s : sh j) -> (po j s) -> Cx Ty * Ty
+    ri (Gam ,  tau)         (ff , (ff , sg)) p  = ((Gam , (sg ->> tau)) <?> (Gam , sg)) p
+    ri (Gam , (sg ->> tau)) (ff , (tt , <>)) <> = (Gam :: sg) ,  tau
+    ri (Gam ,  iota)        (ff , (tt , ())) p
+    ri  ctx                 (tt , _) ()
 
 {- Implement the constructors. -}
+
+_1-_ : Cx Ty -> Ty -> Set
+Gam 1- tau = ITree STLC (Gam , tau)
+
+<<_>> :
+     forall {tau Gam}
+  -> tau <: Gam
+  -> Gam 1- tau
+<< v >> = <$ (tt , v) , (\ ()) $>
+
+Λ :
+     forall {sg tau Gam}
+  -> (Gam :: sg) 1- tau
+  -> Gam 1- (sg ->> tau)
+Λ abs = <$ ((ff , (tt , <>)) , (λ _ → abs)) $>
+
+_<&>_ :
+     forall {sg tau Gam}
+  -> Gam 1- (sg ->> tau)
+  -> Gam 1- sg
+  -> Gam 1- tau
+_<&>_ {sg} {tau} {Gam} f x = <$ ((ff , (ff , sg)) , (f <?> x)) $>
+
+Id : forall {tau} -> Em 1- (tau ->> tau)
+Id = Λ (<< zero >>)
+
+Ki : forall {tau sg} -> Em 1- (tau ->> sg ->> tau)
+Ki = Λ (Λ << suc zero >>)
+
+Sp : forall {tau sg rho} -> Em 1- ((sg ->> tau ->> rho) ->> (sg ->> tau) ->> sg ->> rho)
+Sp = Λ (Λ (Λ ((<< suc (suc zero) >> <&> << zero >>) <&> (<< suc zero >> <&> << zero >>))))
 
 ---------------------------------------------------------------
 
@@ -147,8 +197,8 @@ desc D = {!!}
 Everywhere : forall {I J}(C : I i> J)(X : I -> Set) -> Sg I X i> Sg J (<! C !>i X)
 Everywhere (S <i P $ r) X
   =   (\ _ -> One)
-  <i  (\ { (j , s , k) _ -> P j s })
-  $   (\ { (j , s , k) _ p -> r j s p , k p })
+  <i  (\ { (j , (s , k)) _ -> P j s })
+  $   (\ { (j , (s , k)) _ p -> r j s p , k p })
 
 allTrivial : forall {I J}(C : I i> J)(X : I -> Set) jc ->
              <! Everywhere C X !>i (\ _ -> One) jc

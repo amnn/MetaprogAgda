@@ -86,7 +86,7 @@ conEndoFunctorOKP {S <1 P} = ?
 \end{spec}
 %if False
 \begin{code}
-conEndoFunctor : {C : Con} -> EndoFunctor <! C !>c
+instance conEndoFunctor : {C : Con} -> EndoFunctor <! C !>c
 conEndoFunctor {S <1 P} = record { map = \ f -> vv \ s k -> s , f o k }
 
 conEndoFunctorOKP : {C : Con} -> EndoFunctorOKP <! C !>c
@@ -230,14 +230,14 @@ zeroW : NatW
 zeroW = <$ tt , magic $>
 
 sucW : NatW -> NatW
-sucW n = <$ ff , pure n $>
+sucW n = <$ ff , (\ _ -> n) $>
 
 precW : forall {l}{T : Set l} -> T -> (NatW -> T -> T) -> NatW -> T
 precW z s <$ tt , _ $> = z
 precW z s <$ ff , k $> = s (k <>) (precW z s (k <>))
 
 addW : NatW -> NatW -> NatW
-addW x y = precW y (pure sucW) x
+addW x y = precW y (\ _ -> sucW) x
 \end{code}
 %endif
 How many different implementations of |zeroW| can you find?
@@ -300,7 +300,7 @@ _^*c C = C ^* One <1 Path where
   Path <$ (ff , s) , k $> = Sg (Po C s) \ p -> Path (k p)
 \end{code}
 %endif
-and exhibit an isomorphism 
+and exhibit an isomorphism
 \[
   |C ^* X| \cong |<! C ^*c !>c X|
 \]
@@ -439,4 +439,3 @@ What is |der (C ^*c)| ?
 \section{Denormalized Containers}
 
 These may appear later.
-
