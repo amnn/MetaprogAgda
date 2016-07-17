@@ -95,7 +95,7 @@ Sp = Λ (Λ (Λ ((<< suc (suc zero) >> <&> << zero >>) <&> (<< suc zero >> <&> <
 Construct -}
 
 IdIx : forall {I} -> I i> I
-IdIx = {!!}
+IdIx = (\ _ -> One) <i (\ _ _ -> One) $ (\ i _ _ -> i)
 
 {- such that
 \[ |<! IdIx !>i X i| \cong |X i|
@@ -103,7 +103,19 @@ IdIx = {!!}
 Similarly, construct the composition -}
 
 CoIx : forall {I J K} -> J i> K -> I i> J -> I i> K
-CoIx C C' = {!!}
+CoIx {I} {J} {K}
+  (shC  <i poC  $ riC)
+  (shC' <i poC' $ riC')
+  = sh <i po $ ri
+  where
+    sh : K -> Set
+    sh k = Sg (shC k) \ s -> (p : poC k s) -> shC' (riC k s p)
+
+    po : (k : K) -> sh k -> Set
+    po k (s , p->s')= Sg (poC k s) \ p -> poC' (riC k s p) (p->s' p)
+
+    ri : (k : K) -> (s : sh k) -> po k s -> I
+    ri k (s , p->s') (p , p') = riC' (riC k s p) (p->s' p) p'
 
 {- such that
 \[ |<! CoIx C C' !>i X k| \cong |<! C !>i (<! C' !>i X) k|
